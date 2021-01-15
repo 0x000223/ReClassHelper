@@ -7,11 +7,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReClassHelper", "Managed\Re
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReClass.NET", "..\ReClass.NET\ReClass.NET\ReClass.NET.csproj", "{BFB8917D-E9B4-463F-A6E8-612C35728C78}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{E62BB7E9-C977-471E-BDFD-8EAEAAB9C720}"
-	ProjectSection(SolutionItems) = preProject
-		README.md = README.md
-	EndProjectSection
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "WDM Driver", "Native\WDM Driver\WDM Driver.vcxproj", "{1BF47A3C-53B0-4F72-8027-AE19980071BC}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReClassHelper.Tests", "Managed\ReClassHelper.Tests\ReClassHelper.Tests.csproj", "{8EDF4429-251A-416D-BB68-93F227191BCF}"

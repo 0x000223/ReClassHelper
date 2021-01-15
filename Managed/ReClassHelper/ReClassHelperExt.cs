@@ -6,6 +6,7 @@ using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using ReClassHelper.Properties;
 using ReClassNET.Core;
 using ReClassNET.Debugger;
 using ReClassNET.Plugins;
@@ -18,7 +19,7 @@ namespace ReClassHelper
 
         private Driver driver;
 
-        public override Image Icon => null;
+        public override Image Icon => Resources.Icon;
 
         public override bool Initialize(IPluginHost host)
         {
@@ -72,6 +73,8 @@ namespace ReClassHelper
             EnumerateRemoteModuleCallback callbackModule)
         {
             driver.GetProcessModules(process.ToInt32(), ref callbackModule);
+
+            // TODO - Add section enumeration
         }
 
         public IntPtr OpenRemoteProcess(IntPtr pid, ProcessAccess desiredAccess) => pid;
