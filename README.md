@@ -10,3 +10,6 @@ Modified version of [ReClass.NET-Kernel](https://github.com/MagicDroidX/ReClass.
 - **File > Plugins > Native Helper** - Select 'ReClassHelper' as the functions provider.
 
 ## Images
+![Plugins Menu](/Images/PluginsMenu.png)
+
+![Process Information](/Images/ProcessInformation.png)
