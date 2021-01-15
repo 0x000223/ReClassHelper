@@ -19,34 +19,43 @@ namespace ReClassHelper
 
         private const string ServiceName = "ReClassHelper";
 
-        private readonly IntPtr serviceHandle;
+        private static IntPtr serviceHandle;
 
         private static IntPtr fileHandle;
 
-        public Driver(string path)
+        public static void Initialize()
         {
-            serviceHandle = ServiceManager.CreateService(ServiceName, ServiceName, $"{path}{ServiceName}.sys");
+            // TODO - Cleaner service creation
+
+            var path = $"{Environment.CurrentDirectory}\\Plugins\\{ServiceName}.sys";
+
+            serviceHandle = ServiceManager.CreateService(ServiceName, path);
             if (serviceHandle == IntPtr.Zero)
             {
-                throw new ApplicationException($"Failed to create ReClassHelper service: 0x{Marshal.GetLastWin32Error():X}");
+                var message = $"Failed to create ReClassHelper service: 0x{Marshal.GetLastWin32Error():X}";
+
+                throw new ApplicationException(message);
             }
 
             var status = ServiceManager.StartService(serviceHandle);
             if (status == false)
             {
-                ServiceManager.DeleteService(serviceHandle);
+                Terminate();
 
-                throw new ApplicationException($"Failed to start ReClassHelper service: 0x{Marshal.GetLastWin32Error():X}");
+                var message = $"Failed to start ReClassHelper service: 0x{Marshal.GetLastWin32Error():X}";
+
+                throw new ApplicationException(message);
             }
 
             fileHandle = 
                 Kernel32.CreateFile(SymLink, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero, FileMode.Open, 0, IntPtr.Zero);
         }
 
-        public void Terminate()
+        public static void Terminate()
         {
             // Convert file handle to managed 'SafeHandle' type - to use managed Close() method
-            // Workaround could be to import Win32 CloseHandle()
+
+            // alternative way could be to import Win32 CloseHandle()
 
             var safeHandle = new SafeFileHandle(fileHandle, true);
 
@@ -55,7 +64,7 @@ namespace ReClassHelper
             ServiceManager.DeleteService(serviceHandle);
         }
 
-        public bool Read(int processId, IntPtr address, out byte[] buffer, int size)
+        public static bool Read(int processId, IntPtr address, out byte[] buffer, int size)
         {
             buffer = new byte[size];
             var gcHandle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
@@ -90,7 +99,7 @@ namespace ReClassHelper
             return status;
         }
 
-        public T Read<T>(int processId, IntPtr address)
+        public static T Read<T>(int processId, IntPtr address)
         {
             var type = typeof(T);
             var size = Marshal.SizeOf(type);
@@ -130,14 +139,14 @@ namespace ReClassHelper
             return status ? ret : default;
         }
 
-        public string ReadUnicode(int processId, IntPtr address, int length)
+        public static string ReadUnicode(int processId, IntPtr address, int length)
         {
             var status = Read(processId, address, out var buffer, length);
 
             return status ? Encoding.Unicode.GetString(buffer, 0, length) : string.Empty;
         }
 
-        public bool Write(int processId, IntPtr address, byte[] buffer, int size)
+        public static bool Write(int processId, IntPtr address, byte[] buffer, int size)
         {
             var request = new WriteRequest()
             {
@@ -172,14 +181,12 @@ namespace ReClassHelper
             return status;
         }
 
-        public bool GetProcessInfo(int processId, ref EnumerateProcessData data)
+        public static bool GetProcessInfo(int processId, ref EnumerateProcessData data)
         {
             var request = new ProcessInfo()
             {
                 ProcessId = processId,
-
                 PebAddress = new IntPtr(),
-
                 IsWow64 = false
             };
 
@@ -242,7 +249,7 @@ namespace ReClassHelper
             return status;
         }
 
-        public bool GetProcessModules(int processId, ref EnumerateRemoteModuleCallback callback)
+        public static bool GetProcessModules(int processId, ref EnumerateRemoteModuleCallback callback)
         {
             var request = new ProcessInfo()
             {

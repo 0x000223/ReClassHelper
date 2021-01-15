@@ -17,8 +17,6 @@ namespace ReClassHelper
     {
         private IPluginHost host;
 
-        private Driver driver;
-
         public override Image Icon => Resources.Icon;
 
         public override bool Initialize(IPluginHost host)
@@ -27,7 +25,7 @@ namespace ReClassHelper
 
             this.host = host ?? throw new ArgumentNullException(nameof(host));
 
-            driver = new Driver(Environment.CurrentDirectory + "\\Plugins\\");
+            Driver.Initialize();
 
             host.Process.CoreFunctions.RegisterFunctions("ReClassHelper", this);
 
@@ -38,7 +36,7 @@ namespace ReClassHelper
         {
             host = null;
 
-            driver.Terminate();
+            Driver.Terminate();
         }
 
         public void EnumerateProcesses(EnumerateProcessCallback callbackProcess)
@@ -47,7 +45,8 @@ namespace ReClassHelper
 
             foreach (var process in processes)
             {
-                if (process.Id == 0)
+                // Skipping system processes
+                if (process.Id == 0) 
                 {
                     continue;
                 }
@@ -56,15 +55,15 @@ namespace ReClassHelper
 
                 try
                 {
-                    data.Id = new IntPtr(process.Id);
+                    data.Id   = new IntPtr(process.Id);
                     data.Name = process.MainModule.ModuleName;
                     data.Path = process.MainModule.FileName;
                 }
                 catch
                 {
-                    // In case of protected process
+                    // If protected process
 
-                    driver.GetProcessInfo(process.Id, ref data);
+                    Driver.GetProcessInfo(process.Id, ref data);
                 }
 
                 callbackProcess.Invoke(ref data);
@@ -74,7 +73,7 @@ namespace ReClassHelper
         public void EnumerateRemoteSectionsAndModules(IntPtr process, EnumerateRemoteSectionCallback callbackSection,
             EnumerateRemoteModuleCallback callbackModule)
         {
-            driver.GetProcessModules(process.ToInt32(), ref callbackModule);
+            Driver.GetProcessModules(process.ToInt32(), ref callbackModule);
 
             // TODO - Add section enumeration
         }
@@ -83,14 +82,11 @@ namespace ReClassHelper
 
         public bool IsProcessValid(IntPtr process) => process != IntPtr.Zero;
 
-        public void CloseRemoteProcess(IntPtr process)
-        {
-
-        }
+        public void CloseRemoteProcess(IntPtr process) { }
 
         public bool ReadRemoteMemory(IntPtr process, IntPtr address, ref byte[] buffer, int offset, int size)
         {
-            var status = driver.Read(process.ToInt32(), address, out var output, size);
+            var status = Driver.Read(process.ToInt32(), address, out var output, size);
 
             output.CopyTo(buffer, offset);
 
@@ -104,34 +100,22 @@ namespace ReClassHelper
             Buffer.BlockCopy(buffer, offset, tempBuffer, 0, size);
 
             var status = 
-                driver.Write(process.ToInt32(), address, tempBuffer, size);
+                Driver.Write(process.ToInt32(), address, tempBuffer, size);
 
             return status;
         }
 
-        public void ControlRemoteProcess(IntPtr process, ControlRemoteProcessAction action)
-        {
-
-        }
+        public void ControlRemoteProcess(IntPtr process, ControlRemoteProcessAction action) { }
 
         public bool AttachDebuggerToProcess(IntPtr id) => false;
 
-        public void DetachDebuggerFromProcess(IntPtr id)
-        {
-
-        }
+        public void DetachDebuggerFromProcess(IntPtr id) { }
 
         public bool AwaitDebugEvent(ref DebugEvent evt, int timeoutInMilliseconds) => false;
 
-        public void HandleDebugEvent(ref DebugEvent evt)
-        {
-
-        }
+        public void HandleDebugEvent(ref DebugEvent evt) { }
 
         public bool SetHardwareBreakpoint(IntPtr id, IntPtr address, HardwareBreakpointRegister register,
-            HardwareBreakpointTrigger trigger, HardwareBreakpointSize size, bool set)
-        {
-            return false;
-        }
+            HardwareBreakpointTrigger trigger, HardwareBreakpointSize size, bool set) => false;
     }
 }
