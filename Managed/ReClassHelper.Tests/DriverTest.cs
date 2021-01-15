@@ -15,7 +15,9 @@ namespace ReClassHelper.Tests
         [Test]
         public void ConstructorTest()
         {
-            var driver = new Driver("C:\\Users\\Max\\Documents\\Projects\\ReClassHelper\\bin\\Debug\\x64\\WDM Driver\\");
+            var path = "C:\\Users\\Max\\Documents\\Projects\\ReClassHelper\\bin\\Debug\\x64\\WDM Driver\\";
+
+            var driver = new Driver(path);
 
             Assert.NotNull(driver);
         }
@@ -23,7 +25,9 @@ namespace ReClassHelper.Tests
         [Test]
         public void GetProcessInfoTest()
         {
-            var driver = new Driver("C:\\Users\\Max\\Documents\\Projects\\ReClassHelper\\bin\\Debug\\x64\\WDM Driver\\");
+            var path = "C:\\Users\\Max\\Documents\\Projects\\ReClassHelper\\bin\\Debug\\x64\\WDM Driver\\";
+
+            var driver = new Driver(path);
 
             var data = new EnumerateProcessData();
 
@@ -36,7 +40,9 @@ namespace ReClassHelper.Tests
         [Test]
         public void ReadTest()
         {
-            var driver = new Driver("C:\\Users\\Max\\Documents\\Projects\\ReClassHelper\\bin\\Debug\\x64\\WDM Driver\\");
+            var path = Environment.CurrentDirectory + "\\bin\\Debug\\x64\\WDM Driver\\";
+
+            var driver = new Driver(path);
 
             var result = driver.Read<PEB32>(18288,new IntPtr(0x2D6000));
 
@@ -54,5 +60,7 @@ namespace ReClassHelper.Tests
 
             Assert.True(result);
         }
+
+
     }
 }

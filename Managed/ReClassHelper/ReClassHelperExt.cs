@@ -37,6 +37,8 @@ namespace ReClassHelper
         public override void Terminate()
         {
             host = null;
+
+            driver.Terminate();
         }
 
         public void EnumerateProcesses(EnumerateProcessCallback callbackProcess)

@@ -21,7 +21,7 @@ namespace ReClassHelper
             var manager = Advapi32.OpenSCManager(null, null, accessRight);
             if (manager == IntPtr.Zero)
             {
-                throw new ApplicationException($"Failed to connect to Service Control Manager : {Marshal.GetLastWin32Error()}");
+                throw new ApplicationException($"Failed to connect to Service Manager: please run as administrator");
             }
 
             return manager;
@@ -65,11 +65,13 @@ namespace ReClassHelper
 
         public static bool DeleteService(IntPtr service)
         {
-            var status = new ServiceStatus();
+            Advapi32.ControlService(service, EServiceControl.Stop, new ServiceStatus());
 
-            Advapi32.ControlService(service, EServiceControl.Stop, status);
+            var result = Advapi32.DeleteService(service);
 
-            return Advapi32.DeleteService(service);
+            Advapi32.CloseServiceHandle(service);
+
+            return result;
         }
 
         public static bool StartService(IntPtr service)

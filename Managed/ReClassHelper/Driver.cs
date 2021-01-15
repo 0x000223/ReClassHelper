@@ -19,66 +19,40 @@ namespace ReClassHelper
 
         private const string ServiceName = "ReClassHelper";
 
-        private static IntPtr handle;
+        private readonly IntPtr serviceHandle;
+
+        private static IntPtr fileHandle;
 
         public Driver(string path)
         {
-            var state = ServiceManager.GetServiceState(ServiceName);
-
-            switch (state)
+            serviceHandle = ServiceManager.CreateService(ServiceName, ServiceName, $"{path}{ServiceName}.sys");
+            if (serviceHandle == IntPtr.Zero)
             {
-                case EServiceState.NotFound:
-                {
-                    var serviceHandle = ServiceManager.CreateService(ServiceName, ServiceName, path + ServiceName + ".sys");
-
-                    var status = ServiceManager.StartService(serviceHandle);
-
-                    if (status is false)
-                    {
-                        ServiceManager.DeleteService(serviceHandle);
-
-                        throw new ApplicationException($"Failed to start ReClassHelper service - {Marshal.GetLastWin32Error()}");
-                    }
-
-                    Advapi32.CloseServiceHandle(serviceHandle);
-
-                    break;
-                }
-                case EServiceState.Stopped:
-                {
-                    var serviceHandle = ServiceManager.OpenService(ServiceName);
-
-                    var status = ServiceManager.StartService(serviceHandle);
-
-                    if (status is false)
-                    {
-                        ServiceManager.DeleteService(serviceHandle);
-
-                        throw new ApplicationException($"Failed to start ReClassHelper service - {Marshal.GetLastWin32Error()}");
-                    }
-
-                    Advapi32.CloseServiceHandle(serviceHandle);
-
-                    break;
-                }
+                throw new ApplicationException($"Failed to create ReClassHelper service: 0x{Marshal.GetLastWin32Error():X}");
             }
 
-            handle = 
-                Kernel32.CreateFile(SymLink, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero,
-                    FileMode.Open, 0, IntPtr.Zero);
+            var status = ServiceManager.StartService(serviceHandle);
+            if (status == false)
+            {
+                ServiceManager.DeleteService(serviceHandle);
+
+                throw new ApplicationException($"Failed to start ReClassHelper service: 0x{Marshal.GetLastWin32Error():X}");
+            }
+
+            fileHandle = 
+                Kernel32.CreateFile(SymLink, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero, FileMode.Open, 0, IntPtr.Zero);
         }
 
-        ~Driver()
+        public void Terminate()
         {
-            var serviceHandle = ServiceManager.OpenService(ServiceName);
+            // Convert file handle to managed 'SafeHandle' type - to use managed Close() method
+            // Workaround could be to import Win32 CloseHandle()
 
-            var status = new ServiceStatus();
+            var safeHandle = new SafeFileHandle(fileHandle, true);
 
-            Advapi32.ControlService(serviceHandle, EServiceControl.Stop, status);
+            safeHandle.Close();
 
             ServiceManager.DeleteService(serviceHandle);
-
-            Advapi32.CloseServiceHandle(serviceHandle);
         }
 
         public bool Read(int processId, IntPtr address, out byte[] buffer, int size)
@@ -101,7 +75,7 @@ namespace ReClassHelper
 
             var status =
                 Kernel32.DeviceIoControl(
-                    handle,         // Driver handle
+                    fileHandle,     // Driver fileHandle
                     IOCTL_READ,     // Control code
                     pRequest,       // Request struct
                     requestSize,    // Request size
@@ -139,7 +113,7 @@ namespace ReClassHelper
 
             var status =
                 Kernel32.DeviceIoControl(
-                    handle,         // Driver handle
+                    fileHandle,     // Driver fileHandle
                     IOCTL_READ,     // Control code
                     pRequest,       // Request struct
                     requestSize,    // Request size
@@ -165,8 +139,6 @@ namespace ReClassHelper
 
         public bool Write(int processId, IntPtr address, byte[] buffer, int size)
         {
-            // Check if driver is running
-
             var request = new WriteRequest()
             {
                 ProcessId = processId,
@@ -184,7 +156,7 @@ namespace ReClassHelper
 
             var status =
                 Kernel32.DeviceIoControl(
-                    handle,         // Driver handle
+                    fileHandle,     // Driver fileHandle
                     IOCTL_WRITE,    // Control code
                     pRequest,       // Request struct
                     requestSize,    // Request size
@@ -218,7 +190,7 @@ namespace ReClassHelper
 
             var status =
                 Kernel32.DeviceIoControl(
-                    handle,             // Driver handle
+                    fileHandle,         // Driver fileHandle
                     IOCTL_PROCESS_INFO, // Control code
                     pRequest,           // Request struct
                     requestSize,        // Requst size
@@ -284,7 +256,7 @@ namespace ReClassHelper
 
             var status =
                 Kernel32.DeviceIoControl(
-                    handle,             // Driver handle
+                    fileHandle,         // Driver fileHandle
                     IOCTL_PROCESS_INFO, // Control code
                     pRequest,           // Request struct
                     requestSize,        // Request size
