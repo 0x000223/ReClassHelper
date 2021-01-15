@@ -1,71 +1,57 @@
 #include "Routines.h"
 
-
-/// <summary>
-/// Read from target process memory address
-/// </summary>
-/// <param name="pReadMemory"></param>
-/// <returns></returns>
 NTSTATUS ReadMemory(_In_ PREAD_REQUEST pReadMemory)
 {
     KdPrint(("[#] ReClassHelper : Invoked ReadMemory()\n"));
 	
     NTSTATUS status = STATUS_SUCCESS;
-    PEPROCESS peTargetProcess = NULL;
+    PEPROCESS pEprocess = NULL;
 
-    // Returns pointer to EPROCESS
-    status = PsLookupProcessByProcessId((HANDLE)pReadMemory->ProcessId, &peTargetProcess);
+    status = PsLookupProcessByProcessId((HANDLE)pReadMemory->ProcessId, &pEprocess);
     if (status == STATUS_INVALID_CID)
     {
-        KdPrint(("Kernel Helper: PsLookupProcessByProcessId failed\n"));
+        KdPrint(("[#] ReClassHelper : PsLookupProcessByProcessId failed\n"));
         return STATUS_CANCELLED;
     }
 
-    // Probe for read
     __try
     {
         ProbeForRead(pReadMemory->Address, pReadMemory->Size, 1);
     }
     __except (EXCEPTION_EXECUTE_HANDLER)
     {
-        KdPrint(("Kernel Helper: ProbeForRead has failed with exception code %X\n", GetExceptionCode()));
+        KdPrint(("[#] ReClassHelper : ProbeForRead has failed with exception code %X\n", GetExceptionCode()));
         return STATUS_CANCELLED;
     }
 
-    // Probe to write
     __try
     {
         ProbeForWrite(pReadMemory->Buffer, pReadMemory->Size, 1);
     }
     __except (EXCEPTION_EXECUTE_HANDLER)
     {
-        KdPrint(("Kernel Helper: ProbeForRead has failed with exception code %X\n", GetExceptionCode()));
+        KdPrint(("[#] ReClassHelper : ProbeForRead has failed with exception code %X\n", GetExceptionCode()));
         return STATUS_CANCELLED;
     }
 
-    // Read memory
     __try 
     {
         SIZE_T bytesCopied = 0;
 
-        // Copy memory data from targetAddress to readRequest struct
-        status = MmCopyVirtualMemory(peTargetProcess, pReadMemory->Address, PsGetCurrentProcess(),
+        status = MmCopyVirtualMemory(pEprocess, pReadMemory->Address, PsGetCurrentProcess(),
             pReadMemory->Buffer, pReadMemory->Size, KernelMode, &bytesCopied);
     }
     __except (EXCEPTION_EXECUTE_HANDLER)
     {
-        KdPrint(("Kernel Helper: MmCopyVirtualMemory failed and raised exception code %X\n", GetExceptionCode()));
+        KdPrint(("[#] ReClassHelper : MmCopyVirtualMemory failed and raised exception code %X\n", GetExceptionCode()));
         return STATUS_CANCELLED;
     }
 
+	ObDereferenceObject(pEprocess);
+	
     return status;
 }
 
-/// <summary>
-/// Write to a target process memory address
-/// </summary>
-/// <param name="pWriteMemory"></param>
-/// <returns></returns>
 NTSTATUS WriteMemory(_In_ PWRITE_REQUEST pWriteMemory)
 {
 	KdPrint(("[#] ReClassHelper : Invoked WriteMemory()\n"));
@@ -73,16 +59,14 @@ NTSTATUS WriteMemory(_In_ PWRITE_REQUEST pWriteMemory)
 	NTSTATUS status = STATUS_SUCCESS;
     PEPROCESS pEprocess = NULL;
 
-    // Returns pointer to EPROCESS
     status = PsLookupProcessByProcessId((HANDLE)pWriteMemory->ProcessId, &pEprocess);
     if (status == STATUS_INVALID_CID)
     {
-        DbgPrint("Kernel Helper: PsLookupProcessByProcessId failed: Invalid Process Id!\n");
-        DbgPrint("Kernel Helper: ProcessId = %d", pWriteMemory->ProcessId);
+        DbgPrint("[#] ReClassHelper : PsLookupProcessByProcessId failed: Invalid Process Id!\n");
+        DbgPrint("[#] ReClassHelper : ProcessId = %d", pWriteMemory->ProcessId);
         return STATUS_CANCELLED;
     }
 
-    // Write to target address
     __try
     {
         SIZE_T bytesCopied = 0;
@@ -90,21 +74,18 @@ NTSTATUS WriteMemory(_In_ PWRITE_REQUEST pWriteMemory)
     }
     __except (EXCEPTION_EXECUTE_HANDLER)
     {
-        DbgPrint("Kernel Helper: MmCopyVirtualMemory has failed %X\n", GetExceptionCode());
+        DbgPrint("[#] ReClassHelper : MmCopyVirtualMemory has failed %X\n", GetExceptionCode());
         DbgPrint("Address = %p, ProcessId = %d, Size = %d, Buffer = %p", pWriteMemory->Address, pWriteMemory->ProcessId, pWriteMemory->Size, pWriteMemory->Buffer);
         return STATUS_CANCELLED;
     }
 
-    DbgPrint("Address = %p, ProcessId = %d, Size = %d, Buffer = %p", pWriteMemory->Address, pWriteMemory->ProcessId, pWriteMemory->Size, pWriteMemory->Buffer);
+    DbgPrint("[#] ReClassHelper : Address = %p, ProcessId = %d, Size = %d, Buffer = %p", pWriteMemory->Address, pWriteMemory->ProcessId, pWriteMemory->Size, pWriteMemory->Buffer);
 
+    ObDereferenceObject(pEprocess);
+	
     return status;
 }
 
-/// <summary>
-/// 
-/// </summary>
-/// <param name="pProcessInfo"></param>
-/// <returns></returns>
 NTSTATUS GetProcessInfo(_Out_ PPROCESS_INFO pProcessInfo)
 {
     KdPrint(("[#] ReClassHelper : Invoked GetProcessInfo()\n"));
@@ -124,7 +105,7 @@ NTSTATUS GetProcessInfo(_Out_ PPROCESS_INFO pProcessInfo)
 
 	if(pProcessInfo->IsWow64) 
 	{
-		// 32 bit process
+		// 32 bit
 		
         PPEB32 pPEB32 = (PPEB32)PsGetProcessWow64Process(pEProcess);
 		
@@ -132,7 +113,7 @@ NTSTATUS GetProcessInfo(_Out_ PPROCESS_INFO pProcessInfo)
 	}
     else 
     {
-        // 64 bit process
+        // 64 bit
     	
         PPEB pPEB = (PPEB)PsGetProcessPeb(pEProcess);
 
