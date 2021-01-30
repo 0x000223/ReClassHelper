@@ -51,7 +51,7 @@ namespace ReClassHelper
         {
             public int    ProcessId;
             public IntPtr PebAddress;
-            public bool IsWow64;
+            public bool   IsWow64;
 
             public ProcessInfo(int processId, IntPtr pebAddress, bool isWow64)
             {

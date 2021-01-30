@@ -4,8 +4,8 @@
 // Contorl codes
 #define HELPER_DEVICE_TYPE 0x00222222
 
-#define IOCTL_READ			CTL_CODE(HELPER_DEVICE_TYPE, 0x800, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
-#define IOCTL_WRITE			CTL_CODE(HELPER_DEVICE_TYPE, 0x801, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
+#define IOCTL_READ		CTL_CODE(HELPER_DEVICE_TYPE, 0x800, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
+#define IOCTL_WRITE		CTL_CODE(HELPER_DEVICE_TYPE, 0x801, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
 #define IOCTL_PROCESS_INFO	CTL_CODE(HELPER_DEVICE_TYPE, 0x802, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
 
 NTSTATUS DeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp)
@@ -109,11 +109,11 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 
 	NTSTATUS status = IoCreateDevice(
 		DriverObject,			// 
-		0,						// Extra bytes
+		0,				// Extra bytes
 		&deviceName,			// Device name
 		HELPER_DEVICE_TYPE,		// Device type
-		0,						// Characteristics flag
-		FALSE,					// Exclusive mode
+		0,				// Characteristics flag
+		FALSE,				// Exclusive mode
 		&deviceObject);			// 
 
 
