@@ -1,25 +1,21 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using ReClassHelper.Native;
 using ReClassHelper.Native.Types;
 
 namespace ReClassHelper
 {
-    public class ServiceManager
+    public static class ServiceManager
     {
-        private const int SERVICE_KERNEL_DRIVER = 1; // Service type
+        private const int ServiceType = 1;
 
         private static IntPtr OpenServiceManager(EServiceControlManagerAccessRights accessRight)
         {
             var manager = Advapi32.OpenSCManager(null, null, accessRight);
             
-            return (manager != IntPtr.Zero) ? manager : 
-                throw new ApplicationException("Failed to connect to Service Manager - please run as administrator");
+            return manager != IntPtr.Zero 
+                ? manager 
+                : throw new ApplicationException("Failed to connect to Service Manager - please run as administrator");
         }
 
         public static IntPtr CreateService(string serviceName, string pathName)
@@ -32,7 +28,7 @@ namespace ReClassHelper
                     serviceName,                    // Service name
                     serviceName,                    // Display name
                     EServiceAccessRights.AllAccess, // Access rights
-                    SERVICE_KERNEL_DRIVER,          // Type
+                    ServiceType,            // Type
                     EServiceBootFlag.DemandStart,   // Boot flag
                     EServiceError.Normal,           // Error
                     pathName,                       // Full path
@@ -47,17 +43,15 @@ namespace ReClassHelper
             return service;
         }
 
-        public static bool DeleteService(IntPtr service)
+        public static void DeleteService(IntPtr service)
         {
             // Deleting a Service (https://docs.microsoft.com/en-us/windows/win32/services/deleting-a-service)
 
             Advapi32.ControlService(service, EServiceControl.Stop, new ServiceStatus());
 
-            var result = Advapi32.DeleteService(service);
+            Advapi32.DeleteService(service);
 
             Advapi32.CloseServiceHandle(service);
-
-            return result;
         }
 
         public static bool StartService(IntPtr service)

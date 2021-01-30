@@ -1,18 +1,14 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ReClassHelper
 {
     public partial class Driver
     {
-        private static readonly uint HELPER_DEVICE_TYPE    = 0x00222222;
+        private const uint DeviceType = 0x00222222;
 
-        private static readonly uint IOCTL_READ            = CTL_CODE(HELPER_DEVICE_TYPE, 0x800, 0, 1 | 2);
-        private static readonly uint IOCTL_WRITE           = CTL_CODE(HELPER_DEVICE_TYPE, 0x801, 0, 1 | 2);
-        private static readonly uint IOCTL_PROCESS_INFO    = CTL_CODE(HELPER_DEVICE_TYPE, 0x802, 0, 1 | 2);
+        private static readonly uint IOCTL_READ            = CTL_CODE(DeviceType, 0x800, 0, 1 | 2);
+        private static readonly uint IOCTL_WRITE           = CTL_CODE(DeviceType, 0x801, 0, 1 | 2);
+        private static readonly uint IOCTL_PROCESS_INFO    = CTL_CODE(DeviceType, 0x802, 0, 1 | 2);
 
         private static uint CTL_CODE(uint deviceType, uint function, uint method, uint access)
         {

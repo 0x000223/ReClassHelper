@@ -1,11 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Diagnostics.Contracts;
 using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using ReClassHelper.Properties;
 using ReClassNET.Core;
 using ReClassNET.Debugger;
@@ -15,15 +10,11 @@ namespace ReClassHelper
 {
     public class ReClassHelperExt : Plugin, ICoreProcessFunctions
     {
-        private IPluginHost host;
-
         public override Image Icon => Resources.Icon;
 
         public override bool Initialize(IPluginHost host)
         {
-            Contract.Requires(host != null);
-
-            this.host = host ?? throw new ArgumentNullException(nameof(host));
+            host = host ?? throw new ArgumentNullException(nameof(host));
 
             Driver.Initialize();
 
@@ -34,8 +25,6 @@ namespace ReClassHelper
 
         public override void Terminate()
         {
-            host = null;
-
             Driver.Terminate();
         }
 

@@ -1,11 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Forms;
 using Microsoft.Win32.SafeHandles;
 using ReClassHelper.Native;
 using ReClassHelper.Native.Types;
@@ -13,15 +9,15 @@ using ReClassNET.Core;
 
 namespace ReClassHelper
 {
-   public partial class Driver
+   public static partial class Driver
     {
-        private const string SymLink = "\\\\.\\ReClassHelper";
+        private const string SymLink = @"\\.\ReClassHelper";
 
         private const string ServiceName = "ReClassHelper";
 
-        private static IntPtr serviceHandle;
+        private static IntPtr _serviceHandle;
 
-        private static IntPtr fileHandle;
+        private static IntPtr _fileHandle;
 
         public static void Initialize()
         {
@@ -29,15 +25,15 @@ namespace ReClassHelper
 
             var path = $"{Environment.CurrentDirectory}\\Plugins\\{ServiceName}.sys";
 
-            serviceHandle = ServiceManager.CreateService(ServiceName, path);
-            if (serviceHandle == IntPtr.Zero)
+            _serviceHandle = ServiceManager.CreateService(ServiceName, path);
+            if (_serviceHandle == IntPtr.Zero)
             {
                 var message = $"Failed to create ReClassHelper service: 0x{Marshal.GetLastWin32Error():X}";
 
                 throw new ApplicationException(message);
             }
 
-            var status = ServiceManager.StartService(serviceHandle);
+            var status = ServiceManager.StartService(_serviceHandle);
             if (status == false)
             {
                 Terminate();
@@ -47,7 +43,7 @@ namespace ReClassHelper
                 throw new ApplicationException(message);
             }
 
-            fileHandle = 
+            _fileHandle = 
                 Kernel32.CreateFile(SymLink, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero, FileMode.Open, 0, IntPtr.Zero);
         }
 
@@ -57,49 +53,14 @@ namespace ReClassHelper
 
             // alternative way could be to import Win32 CloseHandle()
 
-            var safeHandle = new SafeFileHandle(fileHandle, true);
+            var safeHandle = new SafeFileHandle(_fileHandle, true);
 
             safeHandle.Close();
 
-            ServiceManager.DeleteService(serviceHandle);
+            ServiceManager.DeleteService(_serviceHandle);
         }
 
-        public static bool Read(int processId, IntPtr address, out byte[] buffer, int size)
-        {
-            buffer = new byte[size];
-            var gcHandle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
-
-            var request = new ReadRequest()
-            {
-                ProcessId = processId,
-                Address = address,
-                Buffer =  gcHandle.AddrOfPinnedObject(),
-                Size = size
-            };
-
-            var requestSize = Marshal.SizeOf(request);
-
-            var pRequest = Marshal.AllocHGlobal(requestSize);
-            Marshal.StructureToPtr(request, pRequest, false);
-
-            var status =
-                Kernel32.DeviceIoControl(
-                    fileHandle,     // Driver fileHandle
-                    IOCTL_READ,     // Control code
-                    pRequest,       // Request struct
-                    requestSize,    // Request size
-                    IntPtr.Zero,    // Output buffer
-                    0,              // Output size
-                    out _,          // Returned bytes count
-                    IntPtr.Zero);   // Async struct
-
-            gcHandle.Free();
-            Marshal.FreeHGlobal(pRequest);
-
-            return status;
-        }
-
-        public static T Read<T>(int processId, IntPtr address)
+        private static T Read<T>(int processId, IntPtr address)
         {
             var type = typeof(T);
             var size = Marshal.SizeOf(type);
@@ -122,7 +83,7 @@ namespace ReClassHelper
 
             var status =
                 Kernel32.DeviceIoControl(
-                    fileHandle,     // Driver fileHandle
+                    _fileHandle,    // Device handle
                     IOCTL_READ,     // Control code
                     pRequest,       // Request struct
                     requestSize,    // Request size
@@ -139,11 +100,46 @@ namespace ReClassHelper
             return status ? ret : default;
         }
 
-        public static string ReadUnicode(int processId, IntPtr address, int length)
+        private static string ReadUnicode(int processId, IntPtr address, int length)
         {
             var status = Read(processId, address, out var buffer, length);
 
             return status ? Encoding.Unicode.GetString(buffer, 0, length) : string.Empty;
+        }
+
+        public static bool Read(int processId, IntPtr address, out byte[] buffer, int size)
+        {
+            buffer = new byte[size];
+            var gcHandle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
+
+            var request = new ReadRequest()
+            {
+                ProcessId = processId,
+                Address = address,
+                Buffer =  gcHandle.AddrOfPinnedObject(),
+                Size = size
+            };
+
+            var requestSize = Marshal.SizeOf(request);
+
+            var pRequest = Marshal.AllocHGlobal(requestSize);
+            Marshal.StructureToPtr(request, pRequest, false);
+
+            var status =
+                Kernel32.DeviceIoControl(
+                    _fileHandle,    // Device handle
+                    IOCTL_READ,     // Control code
+                    pRequest,       // Request struct
+                    requestSize,    // Request size
+                    IntPtr.Zero,    // Output buffer
+                    0,              // Output size
+                    out _,          // Returned bytes count
+                    IntPtr.Zero);   // Async struct
+
+            gcHandle.Free();
+            Marshal.FreeHGlobal(pRequest);
+
+            return status;
         }
 
         public static bool Write(int processId, IntPtr address, byte[] buffer, int size)
@@ -165,7 +161,7 @@ namespace ReClassHelper
 
             var status =
                 Kernel32.DeviceIoControl(
-                    fileHandle,     // Driver fileHandle
+                    _fileHandle,    // Device handle
                     IOCTL_WRITE,    // Control code
                     pRequest,       // Request struct
                     requestSize,    // Request size
@@ -181,7 +177,7 @@ namespace ReClassHelper
             return status;
         }
 
-        public static bool GetProcessInfo(int processId, ref EnumerateProcessData data)
+        public static void GetProcessInfo(int processId, ref EnumerateProcessData data)
         {
             var request = new ProcessInfo()
             {
@@ -197,7 +193,7 @@ namespace ReClassHelper
 
             var status =
                 Kernel32.DeviceIoControl(
-                    fileHandle,         // Driver fileHandle
+                    _fileHandle,        // Device handle
                     IOCTL_PROCESS_INFO, // Control code
                     pRequest,           // Request struct
                     requestSize,        // Requst size
@@ -208,7 +204,7 @@ namespace ReClassHelper
 
             if (status is false)
             {
-                return false;
+                return;
             }
 
             var result = (ProcessInfo) Marshal.PtrToStructure(pRequest, typeof(ProcessInfo));
@@ -217,13 +213,13 @@ namespace ReClassHelper
             {
                 // 32 bit
 
-                var peb32 = Read<PEB32>(processId, result.PebAddress);
+                var peb32 = Read<Peb32>(processId, result.PebAddress);
 
-                var ldr = Read<PEB_LDR_DATA32>(processId, new IntPtr(peb32.Ldr));
+                var ldr = Read<PebLdrData32>(processId, new IntPtr(peb32.Ldr));
 
                 var head = new IntPtr(ldr.InLoadOrderModuleList.Flink);
 
-                var entry = Read<LDR_DATA_TABLE_ENTRY32>(processId, head);
+                var entry = Read<LdrDataTableEntry32>(processId, head);
 
                 data.Name = ReadUnicode(processId, new IntPtr(entry.BaseDllName.Buffer), entry.BaseDllName.Length);
                 data.Path = ReadUnicode(processId, new IntPtr(entry.FullDllName.Buffer), entry.FullDllName.Length);
@@ -232,24 +228,22 @@ namespace ReClassHelper
             {
                 // 64 bit
 
-                var peb = Read<PEB>(processId, result.PebAddress);
+                var peb = Read<Peb>(processId, result.PebAddress);
 
-                var ldr = Read<PEB_LDR_DATA>(processId, peb.Ldr);
+                var ldr = Read<PebLdrData>(processId, peb.Ldr);
 
                 var head = ldr.InLoadOrderModuleList.Flink;
 
-                var entry = Read<LDR_DATA_TABLE_ENTRY>(processId, head);
+                var entry = Read<LdrDataTableEntry>(processId, head);
 
                 data.Name = ReadUnicode(processId, entry.BaseDllName.Buffer, entry.BaseDllName.Length);
                 data.Path = ReadUnicode(processId, entry.FullDllName.Buffer, entry.FullDllName.Length);
             }
 
             Marshal.FreeHGlobal(pRequest);
-
-            return status;
         }
 
-        public static bool GetProcessModules(int processId, ref EnumerateRemoteModuleCallback callback)
+        public static void GetProcessModules(int processId, ref EnumerateRemoteModuleCallback callback)
         {
             var request = new ProcessInfo()
             {
@@ -263,7 +257,7 @@ namespace ReClassHelper
 
             var status =
                 Kernel32.DeviceIoControl(
-                    fileHandle,         // Driver fileHandle
+                    _fileHandle,        // Device handle
                     IOCTL_PROCESS_INFO, // Control code
                     pRequest,           // Request struct
                     requestSize,        // Request size
@@ -274,7 +268,7 @@ namespace ReClassHelper
 
             if (status is false)
             {
-                return false;
+                return;
             }
 
             var result = (ProcessInfo) Marshal.PtrToStructure(pRequest, typeof(ProcessInfo));
@@ -283,16 +277,16 @@ namespace ReClassHelper
             {
                 // 32 bit
 
-                var peb32 = Read<PEB32>(processId, result.PebAddress);
+                var peb32 = Read<Peb32>(processId, result.PebAddress);
 
-                var ldr = Read<PEB_LDR_DATA32>(processId, new IntPtr(peb32.Ldr));
+                var ldr = Read<PebLdrData32>(processId, new IntPtr(peb32.Ldr));
 
                 var head = new IntPtr(ldr.InLoadOrderModuleList.Flink);
                 var next = head;
 
                 do
                 {
-                    var entry = Read<LDR_DATA_TABLE_ENTRY32>(processId, next);
+                    var entry = Read<LdrDataTableEntry32>(processId, next);
 
                     next = new IntPtr(entry.InLoadOrderLinks.Flink);
 
@@ -316,16 +310,16 @@ namespace ReClassHelper
             {
                 // 64 bit
 
-                var peb = Read<PEB>(processId, result.PebAddress);
+                var peb = Read<Peb>(processId, result.PebAddress);
 
-                var ldr = Read<PEB_LDR_DATA>(processId, peb.Ldr);
+                var ldr = Read<PebLdrData>(processId, peb.Ldr);
 
                 var head = ldr.InLoadOrderModuleList.Flink;
                 var next = head;
 
                 do
                 {
-                    var entry = Read<LDR_DATA_TABLE_ENTRY>(processId, next);
+                    var entry = Read<LdrDataTableEntry>(processId, next);
 
                     next = entry.InLoadOrderLinks.Flink;
 
@@ -347,8 +341,6 @@ namespace ReClassHelper
             }
 
             Marshal.FreeHGlobal(pRequest);
-
-            return status;
         }
     } 
 }
